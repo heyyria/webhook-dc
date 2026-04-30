@@ -1,293 +1,346 @@
--- Triggerbot V2 - Fixed by Grok
-local Players = game:GetService('Players')
-local UserInputService = game:GetService('UserInputService')
-local HttpService = game:GetService('HttpService')
-local StarterGui = game:GetService('StarterGui')
-local RunService = game:GetService('RunService')
+-- ts file was generated at discord.gg/25ms
 
-local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
-local PlayerGui = LocalPlayer:WaitForChild('PlayerGui')
+local _LocalPlayer5 = game:GetService('Players').LocalPlayer
+local _ = workspace.CurrentCamera
+local _call10 = game:GetService('UserInputService')
+local _call12 = game:GetService('HttpService')
+local _call14 = game:GetService('StarterGui')
 
--- Create config folder if it doesn't exist
-local TBData = PlayerGui:FindFirstChild('TBData') or Instance.new('Folder')
-TBData.Name = 'TBData'
-TBData.Parent = PlayerGui
-
-local ConfigValue = TBData:FindFirstChild('cfg') or Instance.new('StringValue')
-ConfigValue.Name = 'cfg'
-ConfigValue.Parent = TBData
-
--- Default config
-local Config = {
-    Enabled = true,
-    WallCheck = true,
-    Delay = 0.1,
-    Prediction = 0.134,
-    ShowUIButton = false,
-    ShowCredits = false,
-    Panic = false,
-}
-
--- Load saved config if exists
-if ConfigValue.Value \~= "" then
-    local success, decoded = pcall(function()
-        return HttpService:JSONDecode(ConfigValue.Value)
-    end)
-    if success then
-        for k, v in pairs(decoded) do
-            Config[k] = v
-        end
-    end
-end
-
--- Save config function
-local function SaveConfig()
-    local success, encoded = pcall(function()
-        return HttpService:JSONEncode(Config)
-    end)
-    if success then
-        ConfigValue.Value = encoded
-    end
-end
-
--- GUI
-local ScreenGui = Instance.new('ScreenGui')
-ScreenGui.Name = 'Triggerbot'
-ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = PlayerGui
-
--- Credits label
-local Credits = Instance.new('TextLabel')
-Credits.Size = UDim2.new(0, 360, 0, 30)
-Credits.Position = UDim2.new(1, -370, 0, 10)
-Credits.BackgroundTransparency = 1
-Credits.Text = 'made by zaitheskid on discord & jq_fr._78958'
-Credits.TextColor3 = Color3.fromRGB(255, 100, 100)
-Credits.Font = Enum.Font.GothamBold
-Credits.TextSize = 17
-Credits.TextXAlignment = Enum.TextXAlignment.Right
-Credits.Visible = Config.ShowCredits
-Credits.Parent = ScreenGui
-
--- Toggle Button
-local ToggleBtn = Instance.new('TextButton')
-ToggleBtn.Size = UDim2.new(0, 60, 0, 60)
-ToggleBtn.Position = UDim2.new(0.02, 0, 0.3, 0)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-ToggleBtn.Text = 'TB'
-ToggleBtn.TextColor3 = Color3.new(1, 1, 1)
-ToggleBtn.Font = Enum.Font.GothamBold
-ToggleBtn.TextSize = 26
-ToggleBtn.Visible = Config.ShowUIButton
-ToggleBtn.Parent = ScreenGui
-
-local UICorner1 = Instance.new('UICorner', ToggleBtn)
-UICorner1.CornerRadius = UDim.new(0, 12)
-
--- Main Menu Frame
-local MainFrame = Instance.new('Frame')
-MainFrame.Size = UDim2.new(0, 420, 0, 460)
-MainFrame.Position = UDim2.new(0.5, -210, 0.5, -230)
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-MainFrame.BackgroundTransparency = 0.05
-MainFrame.Visible = false
-MainFrame.Parent = ScreenGui
-
-local UICorner2 = Instance.new('UICorner', MainFrame)
-UICorner2.CornerRadius = UDim.new(0, 14)
-
-local Stroke = Instance.new('UIStroke', MainFrame)
-Stroke.Color = Color3.fromRGB(255, 50, 50)
-Stroke.Thickness = 2
-
-local Title = Instance.new('TextLabel', MainFrame)
-Title.Size = UDim2.new(1, 0, 0, 50)
-Title.BackgroundTransparency = 1
-Title.Text = 'TRIGGERBOT'
-Title.TextColor3 = Color3.fromRGB(255, 80, 80)
-Title.Font = Enum.Font.GothamBlack
-Title.TextSize = 34
-
-local Scrolling = Instance.new('ScrollingFrame', MainFrame)
-Scrolling.Size = UDim2.new(1, -20, 1, -70)
-Scrolling.Position = UDim2.new(0, 10, 0, 60)
-Scrolling.BackgroundTransparency = 1
-Scrolling.ScrollBarThickness = 6
-Scrolling.CanvasSize = UDim2.new(0, 0, 0, 650)
-
-local UIList = Instance.new('UIListLayout', Scrolling)
-UIList.Padding = UDim.new(0, 15)
-UIList.SortOrder = Enum.SortOrder.LayoutOrder
-
--- Helper to create toggle buttons
-local function CreateToggle(text, default, callback)
-    local btn = Instance.new('TextButton')
-    btn.Size = UDim2.new(1, -20, 0, 50)
-    btn.BackgroundColor3 = default and Color3.fromRGB(200, 0, 0) or Color3.fromRGB(30, 30, 30)
-    btn.Text = text .. (default and ": ON" or ": OFF")
-    btn.TextColor3 = Color3.new(1, 1, 1)
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 20
-    btn.Parent = Scrolling
-
-    local corner = Instance.new('UICorner', btn)
-    corner.CornerRadius = UDim.new(0, 10)
-
-    btn.MouseButton1Click:Connect(function()
-        local newState = not (btn.Text:find("ON") \~= nil)
-        btn.Text = text .. (newState and ": ON" or ": OFF")
-        btn.BackgroundColor3 = newState and Color3.fromRGB(200, 0, 0) or Color3.fromRGB(30, 30, 30)
-        callback(newState)
-    end)
-
-    return btn
-end
-
--- Toggles
-CreateToggle("Enabled", Config.Enabled, function(state)
-    Config.Enabled = state
-    SaveConfig()
-end)
-
-local WallCheckBtn = CreateToggle("Wall Check", Config.WallCheck, function(state)
-    Config.WallCheck = state
-    SaveConfig()
-end)
-
-CreateToggle("Show Credits", Config.ShowCredits, function(state)
-    Config.ShowCredits = state
-    Credits.Visible = state
-    SaveConfig()
-end)
-
-CreateToggle("Show UI Button", Config.ShowUIButton, function(state)
-    Config.ShowUIButton = state
-    ToggleBtn.Visible = state
-    SaveConfig()
-end)
-
--- TextBoxes
-local function CreateTextBox(placeholder, default, callback)
-    local box = Instance.new('TextBox')
-    box.Size = UDim2.new(1, -20, 0, 45)
-    box.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    box.PlaceholderText = placeholder
-    box.Text = tostring(default)
-    box.TextColor3 = Color3.new(1, 1, 1)
-    box.Font = Enum.Font.Gotham
-    box.TextSize = 18
-    box.Parent = Scrolling
-
-    local corner = Instance.new('UICorner', box)
-    corner.CornerRadius = UDim.new(0, 8)
-
-    box.FocusLost:Connect(function(enterPressed)
-        if enterPressed then
-            callback(box.Text)
-        end
-    end)
-    return box
-end
-
-CreateTextBox("Delay (seconds)", Config.Delay, function(text)
-    local num = tonumber(text)
-    if num then
-        Config.Delay = math.max(0, num)
-        SaveConfig()
-    end
-end)
-
-CreateTextBox("Prediction", Config.Prediction, function(text)
-    local num = tonumber(text)
-    if num then
-        Config.Prediction = num
-        SaveConfig()
-    end
-end)
-
--- Toggle menu with TB button
-ToggleBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible
-end)
-
--- Notifications
-StarterGui:SetCore('SendNotification', {
-    Title = 'TRIGGERBOT LOADED',
-    Text = 'RightShift = Open Menu\nK = Panic Key',
-    Duration = 7
+_LocalPlayer5:GetMouse()
+_call14:SetCore('SendNotification', {
+    Text = 'yessir',
+    Title = 'V2 IS OUR',
+    Duration = 2,
 })
 
--- Basic input handling (you can expand this)
-UserInputService.InputBegan:Connect(function(input, gp)
-    if gp then return end
-    if input.KeyCode == Enum.KeyCode.RightShift then
-        MainFrame.Visible = not MainFrame.Visible
-    elseif input.KeyCode == Enum.KeyCode.K then
-        Config.Panic = not Config.Panic
-        StarterGui:SetCore('SendNotification', {
-            Title = 'Panic',
-            Text = Config.Panic and 'Triggerbot DISABLED' or 'Triggerbot ENABLED',
-            Duration = 3
-        })
-    end
+local _call20 = _LocalPlayer5:WaitForChild('PlayerGui')
+local _call22 = _call20:FindFirstChild('TBData')
+
+_call22.Name = 'TBData'
+_call22.Parent = _call20
+
+_call22:FindFirstChild('cfg')
+
+local _ = _call22.cfg.Value
+
+for _31, _31_2 in pairs(_call12:JSONDecode(_call22.cfg.Value))do
+    coroutine.yield(true, _31, _31_2)
+end
+
+local _call34 = Instance.new('ScreenGui')
+
+_call34.Name = 'Triggerbot'
+_call34.ResetOnSpawn = false
+_call34.Parent = _call20
+
+local _call36 = Instance.new('TextLabel')
+
+_call36.Size = UDim2.new(0, 360, 0, 30)
+_call36.Position = UDim2.new(1, -370, 0, 10)
+_call36.BackgroundTransparency = 1
+_call36.Text = 'made by zaitheskid on discord & jq_fr._78958'
+_call36.TextColor3 = Color3.fromRGB(255, 100, 100)
+_call36.Font = Enum.Font.GothamBold
+_call36.TextSize = 17
+_call36.TextXAlignment = Enum.TextXAlignment.Right
+_call36.Visible = true
+_call36.Parent = _call34
+
+local _call48 = Instance.new('TextButton')
+
+_call48.Size = UDim2.new(0, 60, 0, 60)
+_call48.Position = UDim2.new(0.02, 0, 0.3, 0)
+_call48.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+_call48.Text = 'TB'
+_call48.TextColor3 = Color3.new(1, 1, 1)
+_call48.Font = Enum.Font.GothamBold
+_call48.TextSize = 26
+_call48.Visible = true
+_call48.Parent = _call34
+
+local _call60 = Instance.new('UICorner', _call48)
+
+_call60.CornerRadius = UDim.new(0, 12)
+
+local _call64 = Instance.new('Frame')
+
+_call64.Size = UDim2.new(0, 420, 0, 460)
+_call64.Position = UDim2.new(0.5, -210, 0.5, -230)
+_call64.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+_call64.BackgroundTransparency = 0.05
+_call64.Visible = false
+_call64.Parent = _call34
+
+local _call72 = Instance.new('UICorner', _call64)
+
+_call72.CornerRadius = UDim.new(0, 14)
+
+local _call76 = Instance.new('UIStroke', _call64)
+
+_call76.Color = Color3.fromRGB(255, 50, 50)
+
+local _call80 = Instance.new('TextLabel', _call64)
+
+_call80.Size = UDim2.new(1, 0, 0, 50)
+_call80.BackgroundTransparency = 1
+_call80.Text = 'TRIGGERBOT'
+_call80.TextColor3 = Color3.fromRGB(255, 80, 80)
+_call80.Font = Enum.Font.GothamBlack
+_call80.TextSize = 34
+
+local _call88 = Instance.new('ScrollingFrame', _call64)
+
+_call88.Size = UDim2.new(1, -20, 1, -70)
+_call88.Position = UDim2.new(0, 10, 0, 60)
+_call88.BackgroundTransparency = 1
+_call88.ScrollBarThickness = 6
+_call88.CanvasSize = UDim2.new(0, 0, 0, 600)
+
+local _call96 = Instance.new('UIListLayout', _call88)
+
+_call96.Padding = UDim.new(0, 15)
+
+_call48.InputBegan:Connect(function(...)
+    local _102_vararg1 = ...
+    local _ = _102_vararg1.UserInputType == Enum.UserInputType.MouseButton1
+end)
+_call10.InputChanged:Connect(function(...) end)
+_call10.InputEnded:Connect(function(...) end)
+_call64.InputBegan:Connect(function(...)
+    local _118_vararg1 = ...
+    local _ = _118_vararg1.UserInputType == Enum.UserInputType.MouseButton1
+end)
+_call10.InputChanged:Connect(function(...) end)
+_call10.InputEnded:Connect(function(...) end)
+
+local _call132 = Instance.new('TextButton')
+
+_call132.Size = UDim2.new(1, -20, 0, 50)
+_call132.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+_call132.Text = 'Enabled: OFF'
+_call132.TextColor3 = Color3.new(1, 1, 1)
+_call132.Font = Enum.Font.GothamBold
+_call132.TextSize = 20
+_call132.Parent = _call88
+
+local _call142 = Instance.new('UICorner', _call132)
+
+_call142.CornerRadius = UDim.new(0, 10)
+
+_call132.MouseButton1Click:Connect(function(...)
+    _call132.Text = 'Enabled: ON'
+    _call132.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+
+    local _call152 = _call22:FindFirstChild('cfg')
+
+    _call152.Name = 'cfg'
+
+    local _call154 = _call12:JSONEncode({
+        Prediction = 0.134,
+        ShowUIButton = true,
+        Panic = false,
+        ShowCredits = true,
+        Enabled = true,
+        Delay = 0.1,
+        WallCheck = true,
+    })
+
+    _call152.Value = _call154
+    _call152.Parent = _call22
 end)
 
--- ==================== TRIGGERBOT LOGIC ====================
--- This is the part that was completely broken before.
--- You'll need to finish the actual trigger logic depending on the game.
+local _call156 = Instance.new('TextButton')
 
-local raycastParams = RaycastParams.new()
-raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-raycastParams.IgnoreWater = true
+_call156.Size = UDim2.new(1, -20, 0, 50)
+_call156.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+_call156.Text = 'Wall Check: ON'
+_call156.TextColor3 = Color3.new(1, 1, 1)
+_call156.Font = Enum.Font.GothamBold
+_call156.TextSize = 20
+_call156.Parent = _call88
 
-local lastTriggerTime = 0
+local _call166 = Instance.new('UICorner', _call156)
 
-RunService.Heartbeat:Connect(function()
-    if Config.Panic or not Config.Enabled then return end
-    if tick() - lastTriggerTime < Config.Delay then return end
+_call166.CornerRadius = UDim.new(0, 10)
 
-    local character = LocalPlayer.Character
-    if not character then return end
+_call156.MouseButton1Click:Connect(function(...)
+    _call156.Text = 'Wall Check: OFF'
+    _call156.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 
-    local tool = character:FindFirstChildWhichIsA('Tool')
-    if not tool then return end
+    local _call176 = _call22:FindFirstChild('cfg')
 
-    local ammo = tool:FindFirstChild('Ammo')
-    if not ammo or not (ammo:IsA('IntValue') or ammo:IsA('NumberValue')) then return end
-    if ammo.Value <= 0 then return end
+    _call176.Name = 'cfg'
 
-    -- Basic triggerbot logic (you'll need to customize this for the specific game)
-    -- Example: shoot when mouse is over an enemy
+    local _call178 = _call12:JSONEncode({
+        Prediction = 0.134,
+        ShowUIButton = true,
+        Panic = false,
+        ShowCredits = true,
+        Enabled = true,
+        Delay = 0.1,
+        WallCheck = false,
+    })
 
-    local mouse = LocalPlayer:GetMouse()
-    local target = mouse.Target
-
-    if target and target.Parent then
-        local humanoid = target.Parent:FindFirstChildWhichIsA('Humanoid')
-        if humanoid and humanoid.Health > 0 and target.Parent \~= character then
-
-            -- Wall check
-            if Config.WallCheck then
-                local origin = Camera.CFrame.Position
-                local direction = (mouse.Hit.Position - origin).Unit * 500
-                local result = workspace:Raycast(origin, direction, raycastParams)
-
-                if not result or result.Instance \~= target then
-                    return -- blocked by wall
-                end
-            end
-
-            -- Trigger shot (simulate mouse click or fire the tool)
-            lastTriggerTime = tick()
-
-            -- Most games use mouse1 click simulation or tool:Activate()
-            tool:Activate()   -- Try this first
-
-            -- Alternative for some games:
-            -- mouse1press simulation via VirtualInputManager (if your executor supports it)
-        end
-    end
+    _call176.Value = _call178
+    _call176.Parent = _call22
 end)
 
-print("✅ Triggerbot fixed and loaded!")
+local _call180 = Instance.new('TextButton')
+
+_call180.Size = UDim2.new(1, -20, 0, 50)
+_call180.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+_call180.Text = 'Show Credits: ON'
+_call180.TextColor3 = Color3.new(1, 1, 1)
+_call180.Font = Enum.Font.GothamBold
+_call180.TextSize = 20
+_call180.Parent = _call88
+
+local _call190 = Instance.new('UICorner', _call180)
+
+_call190.CornerRadius = UDim.new(0, 10)
+
+_call180.MouseButton1Click:Connect(function(...)
+    _call180.Text = 'Show Credits: OFF'
+    _call180.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    _call36.Visible = false
+
+    local _call200 = _call22:FindFirstChild('cfg')
+
+    _call200.Name = 'cfg'
+
+    local _call202 = _call12:JSONEncode({
+        Prediction = 0.134,
+        ShowUIButton = true,
+        Panic = false,
+        ShowCredits = false,
+        Enabled = true,
+        Delay = 0.1,
+        WallCheck = false,
+    })
+
+    _call200.Value = _call202
+    _call200.Parent = _call22
+end)
+
+local _call204 = Instance.new('TextButton')
+
+_call204.Size = UDim2.new(1, -20, 0, 50)
+_call204.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+_call204.Text = 'Show UI Button: ON'
+_call204.TextColor3 = Color3.new(1, 1, 1)
+_call204.Font = Enum.Font.GothamBold
+_call204.TextSize = 20
+_call204.Parent = _call88
+
+local _call214 = Instance.new('UICorner', _call204)
+
+_call214.CornerRadius = UDim.new(0, 10)
+
+_call204.MouseButton1Click:Connect(function(...)
+    _call204.Text = 'Show UI Button: OFF'
+    _call204.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    _call48.Visible = false
+
+    local _call224 = _call22:FindFirstChild('cfg')
+
+    _call224.Name = 'cfg'
+
+    local _call226 = _call12:JSONEncode({
+        Prediction = 0.134,
+        ShowUIButton = false,
+        Panic = false,
+        ShowCredits = false,
+        Enabled = true,
+        Delay = 0.1,
+        WallCheck = false,
+    })
+
+    _call224.Value = _call226
+    _call224.Parent = _call22
+end)
+
+local _call228 = Instance.new('TextBox')
+
+_call228.Size = UDim2.new(1, -20, 0, 45)
+_call228.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+_call228.PlaceholderText = 'Delay (seconds)'
+_call228.Text = '0.1'
+_call228.TextColor3 = Color3.new(1, 1, 1)
+_call228.Font = Enum.Font.Gotham
+_call228.TextSize = 18
+_call228.Parent = _call88
+
+local _call238 = Instance.new('UICorner', _call228)
+
+_call238.CornerRadius = UDim.new(0, 8)
+
+_call228.FocusLost:Connect(function(...)
+    local _ = _call228.Text
+end)
+
+local _call247 = Instance.new('TextBox')
+
+_call247.Size = UDim2.new(1, -20, 0, 45)
+_call247.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+_call247.PlaceholderText = 'Prediction'
+_call247.Text = '0.134'
+_call247.TextColor3 = Color3.new(1, 1, 1)
+_call247.Font = Enum.Font.Gotham
+_call247.TextSize = 18
+_call247.Parent = _call88
+
+local _call257 = Instance.new('UICorner', _call247)
+
+_call257.CornerRadius = UDim.new(0, 8)
+
+_call247.FocusLost:Connect(function(...)
+    local _ = _call247.Text
+end)
+_call48.MouseButton1Click:Connect(function(...)
+    local _ = _call64.Visible
+
+    _call64.Visible = false
+end)
+
+local _call271 = RaycastParams.new()
+
+_call271.FilterType = Enum.RaycastFilterType.Blacklist
+_call271.IgnoreWater = true
+
+game:GetService('RunService').Heartbeat:Connect(function(...)
+    local _call282 = _LocalPlayer5.Character:FindFirstChildWhichIsA('Tool'):FindFirstChild('Ammo')
+
+    _call282:IsA('IntValue')
+
+    local _ = _call282.Value
+
+    error('Luraph Script:218: Luraph Script:200: line 3: attempt to compare table <= number')
+end)
+_call10.InputBegan:Connect(function(...) end)
+
+local _ = _call10.KeyboardEnabled
+
+_call48.Visible = false
+
+_call14:SetCore('SendNotification', {
+    Text = 'RightShift = Open Menu\nK = Panic Key',
+    Title = 'TRIGGERBOT LOADED',
+    Duration = 7,
+})
+
+local _call294 = _call22:FindFirstChild('cfg')
+
+_call294.Name = 'cfg'
+
+local _call296 = _call12:JSONEncode({
+    Prediction = 0.134,
+    ShowUIButton = false,
+    Panic = false,
+    ShowCredits = false,
+    Enabled = true,
+    Delay = 0.1,
+    WallCheck = false,
+})
+
+_call294.Value = _call296
+_call294.Parent = _call22
