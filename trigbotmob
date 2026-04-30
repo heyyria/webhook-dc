@@ -1,0 +1,293 @@
+-- Triggerbot V2 - Fixed by Grok
+local Players = game:GetService('Players')
+local UserInputService = game:GetService('UserInputService')
+local HttpService = game:GetService('HttpService')
+local StarterGui = game:GetService('StarterGui')
+local RunService = game:GetService('RunService')
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local PlayerGui = LocalPlayer:WaitForChild('PlayerGui')
+
+-- Create config folder if it doesn't exist
+local TBData = PlayerGui:FindFirstChild('TBData') or Instance.new('Folder')
+TBData.Name = 'TBData'
+TBData.Parent = PlayerGui
+
+local ConfigValue = TBData:FindFirstChild('cfg') or Instance.new('StringValue')
+ConfigValue.Name = 'cfg'
+ConfigValue.Parent = TBData
+
+-- Default config
+local Config = {
+    Enabled = true,
+    WallCheck = true,
+    Delay = 0.1,
+    Prediction = 0.134,
+    ShowUIButton = false,
+    ShowCredits = false,
+    Panic = false,
+}
+
+-- Load saved config if exists
+if ConfigValue.Value \~= "" then
+    local success, decoded = pcall(function()
+        return HttpService:JSONDecode(ConfigValue.Value)
+    end)
+    if success then
+        for k, v in pairs(decoded) do
+            Config[k] = v
+        end
+    end
+end
+
+-- Save config function
+local function SaveConfig()
+    local success, encoded = pcall(function()
+        return HttpService:JSONEncode(Config)
+    end)
+    if success then
+        ConfigValue.Value = encoded
+    end
+end
+
+-- GUI
+local ScreenGui = Instance.new('ScreenGui')
+ScreenGui.Name = 'Triggerbot'
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = PlayerGui
+
+-- Credits label
+local Credits = Instance.new('TextLabel')
+Credits.Size = UDim2.new(0, 360, 0, 30)
+Credits.Position = UDim2.new(1, -370, 0, 10)
+Credits.BackgroundTransparency = 1
+Credits.Text = 'made by zaitheskid on discord & jq_fr._78958'
+Credits.TextColor3 = Color3.fromRGB(255, 100, 100)
+Credits.Font = Enum.Font.GothamBold
+Credits.TextSize = 17
+Credits.TextXAlignment = Enum.TextXAlignment.Right
+Credits.Visible = Config.ShowCredits
+Credits.Parent = ScreenGui
+
+-- Toggle Button
+local ToggleBtn = Instance.new('TextButton')
+ToggleBtn.Size = UDim2.new(0, 60, 0, 60)
+ToggleBtn.Position = UDim2.new(0.02, 0, 0.3, 0)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+ToggleBtn.Text = 'TB'
+ToggleBtn.TextColor3 = Color3.new(1, 1, 1)
+ToggleBtn.Font = Enum.Font.GothamBold
+ToggleBtn.TextSize = 26
+ToggleBtn.Visible = Config.ShowUIButton
+ToggleBtn.Parent = ScreenGui
+
+local UICorner1 = Instance.new('UICorner', ToggleBtn)
+UICorner1.CornerRadius = UDim.new(0, 12)
+
+-- Main Menu Frame
+local MainFrame = Instance.new('Frame')
+MainFrame.Size = UDim2.new(0, 420, 0, 460)
+MainFrame.Position = UDim2.new(0.5, -210, 0.5, -230)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+MainFrame.BackgroundTransparency = 0.05
+MainFrame.Visible = false
+MainFrame.Parent = ScreenGui
+
+local UICorner2 = Instance.new('UICorner', MainFrame)
+UICorner2.CornerRadius = UDim.new(0, 14)
+
+local Stroke = Instance.new('UIStroke', MainFrame)
+Stroke.Color = Color3.fromRGB(255, 50, 50)
+Stroke.Thickness = 2
+
+local Title = Instance.new('TextLabel', MainFrame)
+Title.Size = UDim2.new(1, 0, 0, 50)
+Title.BackgroundTransparency = 1
+Title.Text = 'TRIGGERBOT'
+Title.TextColor3 = Color3.fromRGB(255, 80, 80)
+Title.Font = Enum.Font.GothamBlack
+Title.TextSize = 34
+
+local Scrolling = Instance.new('ScrollingFrame', MainFrame)
+Scrolling.Size = UDim2.new(1, -20, 1, -70)
+Scrolling.Position = UDim2.new(0, 10, 0, 60)
+Scrolling.BackgroundTransparency = 1
+Scrolling.ScrollBarThickness = 6
+Scrolling.CanvasSize = UDim2.new(0, 0, 0, 650)
+
+local UIList = Instance.new('UIListLayout', Scrolling)
+UIList.Padding = UDim.new(0, 15)
+UIList.SortOrder = Enum.SortOrder.LayoutOrder
+
+-- Helper to create toggle buttons
+local function CreateToggle(text, default, callback)
+    local btn = Instance.new('TextButton')
+    btn.Size = UDim2.new(1, -20, 0, 50)
+    btn.BackgroundColor3 = default and Color3.fromRGB(200, 0, 0) or Color3.fromRGB(30, 30, 30)
+    btn.Text = text .. (default and ": ON" or ": OFF")
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 20
+    btn.Parent = Scrolling
+
+    local corner = Instance.new('UICorner', btn)
+    corner.CornerRadius = UDim.new(0, 10)
+
+    btn.MouseButton1Click:Connect(function()
+        local newState = not (btn.Text:find("ON") \~= nil)
+        btn.Text = text .. (newState and ": ON" or ": OFF")
+        btn.BackgroundColor3 = newState and Color3.fromRGB(200, 0, 0) or Color3.fromRGB(30, 30, 30)
+        callback(newState)
+    end)
+
+    return btn
+end
+
+-- Toggles
+CreateToggle("Enabled", Config.Enabled, function(state)
+    Config.Enabled = state
+    SaveConfig()
+end)
+
+local WallCheckBtn = CreateToggle("Wall Check", Config.WallCheck, function(state)
+    Config.WallCheck = state
+    SaveConfig()
+end)
+
+CreateToggle("Show Credits", Config.ShowCredits, function(state)
+    Config.ShowCredits = state
+    Credits.Visible = state
+    SaveConfig()
+end)
+
+CreateToggle("Show UI Button", Config.ShowUIButton, function(state)
+    Config.ShowUIButton = state
+    ToggleBtn.Visible = state
+    SaveConfig()
+end)
+
+-- TextBoxes
+local function CreateTextBox(placeholder, default, callback)
+    local box = Instance.new('TextBox')
+    box.Size = UDim2.new(1, -20, 0, 45)
+    box.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    box.PlaceholderText = placeholder
+    box.Text = tostring(default)
+    box.TextColor3 = Color3.new(1, 1, 1)
+    box.Font = Enum.Font.Gotham
+    box.TextSize = 18
+    box.Parent = Scrolling
+
+    local corner = Instance.new('UICorner', box)
+    corner.CornerRadius = UDim.new(0, 8)
+
+    box.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            callback(box.Text)
+        end
+    end)
+    return box
+end
+
+CreateTextBox("Delay (seconds)", Config.Delay, function(text)
+    local num = tonumber(text)
+    if num then
+        Config.Delay = math.max(0, num)
+        SaveConfig()
+    end
+end)
+
+CreateTextBox("Prediction", Config.Prediction, function(text)
+    local num = tonumber(text)
+    if num then
+        Config.Prediction = num
+        SaveConfig()
+    end
+end)
+
+-- Toggle menu with TB button
+ToggleBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+
+-- Notifications
+StarterGui:SetCore('SendNotification', {
+    Title = 'TRIGGERBOT LOADED',
+    Text = 'RightShift = Open Menu\nK = Panic Key',
+    Duration = 7
+})
+
+-- Basic input handling (you can expand this)
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == Enum.KeyCode.RightShift then
+        MainFrame.Visible = not MainFrame.Visible
+    elseif input.KeyCode == Enum.KeyCode.K then
+        Config.Panic = not Config.Panic
+        StarterGui:SetCore('SendNotification', {
+            Title = 'Panic',
+            Text = Config.Panic and 'Triggerbot DISABLED' or 'Triggerbot ENABLED',
+            Duration = 3
+        })
+    end
+end)
+
+-- ==================== TRIGGERBOT LOGIC ====================
+-- This is the part that was completely broken before.
+-- You'll need to finish the actual trigger logic depending on the game.
+
+local raycastParams = RaycastParams.new()
+raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+raycastParams.IgnoreWater = true
+
+local lastTriggerTime = 0
+
+RunService.Heartbeat:Connect(function()
+    if Config.Panic or not Config.Enabled then return end
+    if tick() - lastTriggerTime < Config.Delay then return end
+
+    local character = LocalPlayer.Character
+    if not character then return end
+
+    local tool = character:FindFirstChildWhichIsA('Tool')
+    if not tool then return end
+
+    local ammo = tool:FindFirstChild('Ammo')
+    if not ammo or not (ammo:IsA('IntValue') or ammo:IsA('NumberValue')) then return end
+    if ammo.Value <= 0 then return end
+
+    -- Basic triggerbot logic (you'll need to customize this for the specific game)
+    -- Example: shoot when mouse is over an enemy
+
+    local mouse = LocalPlayer:GetMouse()
+    local target = mouse.Target
+
+    if target and target.Parent then
+        local humanoid = target.Parent:FindFirstChildWhichIsA('Humanoid')
+        if humanoid and humanoid.Health > 0 and target.Parent \~= character then
+
+            -- Wall check
+            if Config.WallCheck then
+                local origin = Camera.CFrame.Position
+                local direction = (mouse.Hit.Position - origin).Unit * 500
+                local result = workspace:Raycast(origin, direction, raycastParams)
+
+                if not result or result.Instance \~= target then
+                    return -- blocked by wall
+                end
+            end
+
+            -- Trigger shot (simulate mouse click or fire the tool)
+            lastTriggerTime = tick()
+
+            -- Most games use mouse1 click simulation or tool:Activate()
+            tool:Activate()   -- Try this first
+
+            -- Alternative for some games:
+            -- mouse1press simulation via VirtualInputManager (if your executor supports it)
+        end
+    end
+end)
+
+print("✅ Triggerbot fixed and loaded!")
